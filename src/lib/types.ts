@@ -1,10 +1,13 @@
 export interface SystemMetrics {
   cpu: number;
-  memoryUsed: number;
-  memoryTotal: number;
-  diskUsed: number;
-  diskTotal: number;
-  networkRx: number;
-  networkTx: number;
+  memory: {
+    used: number;
+    total: number;
+  };
+  disk: number;
+  network: {
+    rx: number;
+    tx: number;
+  };
   uptime: number;
 }

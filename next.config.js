@@ -1,12 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  reactStrictMode: true,
   experimental: {
-    typedRoutes: true
-  },
-  env: {
-    PORT: process.env.PORT || '4002'
+    appDir: true
   }
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

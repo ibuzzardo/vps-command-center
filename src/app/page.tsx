@@ -1,109 +1,123 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import type { SystemMetrics } from '@/lib/types';
-
-function formatBytes(bytes: number): string {
-  const gb = bytes / (1024 * 1024 * 1024);
-  return `${gb.toFixed(1)} GB`;
-}
-
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${days}d ${hours}h ${minutes}m`;
-}
+import { useEffect, useState } from 'react'
+import { SystemMetrics } from '@/lib/types'
 
 export default function Dashboard(): JSX.Element {
-  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchMetrics = async (): Promise<void> => {
+    try {
+      const response = await fetch('/api/system')
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics')
+      }
+      const data = await response.json()
+      setMetrics(data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchMetrics = async (): Promise<void> => {
-      try {
-        const response = await fetch('/api/system');
-        if (response.ok) {
-          const data = await response.json();
-          setMetrics(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch metrics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    fetchMetrics()
+    const interval = setInterval(fetchMetrics, 3000)
+    return () => clearInterval(interval)
+  }, [])
 
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 3000);
+  const formatBytes = (bytes: number): string => {
+    const gb = bytes / (1024 * 1024 * 1024)
+    return `${gb.toFixed(2)} GB`
+  }
 
-    return () => clearInterval(interval);
-  }, []);
+  const formatUptime = (seconds: number): string => {
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor((seconds % 86400) / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${days}d ${hours}h ${minutes}m`
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen p-6">
-        <h1 className="text-3xl font-bold mb-6">VPS Command Center</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-              <div className="animate-pulse">
-                <div className="h-4 bg-[#374151] rounded mb-2"></div>
-                <div className="h-8 bg-[#374151] rounded"></div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-secondary">Loading system metrics...</div>
       </div>
-    );
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-destructive">Error: {error}</div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">VPS Command Center</h1>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[#9CA3AF] mb-2">CPU Usage</h3>
-          <p className="text-2xl font-bold text-[#3B82F6]">
-            {metrics?.cpu ?? 'TODO'}%
-          </p>
+        {/* CPU Usage */}
+        <div className="bg-card border border-muted rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2">CPU Usage</h2>
+          <div className="text-2xl font-bold text-primary">
+            {metrics?.cpu.toFixed(1)}%
+          </div>
         </div>
-        
-        <div className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[#9CA3AF] mb-2">Memory</h3>
-          <p className="text-2xl font-bold text-[#3B82F6]">
-            {metrics ? `${formatBytes(metrics.memoryUsed)} / ${formatBytes(metrics.memoryTotal)}` : 'TODO'}
-          </p>
+
+        {/* Memory Usage */}
+        <div className="bg-card border border-muted rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2">Memory</h2>
+          <div className="text-2xl font-bold text-primary">
+            {metrics ? formatBytes(metrics.memory.used) : '0 GB'}
+          </div>
+          <div className="text-sm text-secondary">
+            of {metrics ? formatBytes(metrics.memory.total) : '0 GB'}
+          </div>
         </div>
-        
-        <div className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[#9CA3AF] mb-2">Disk Usage</h3>
-          <p className="text-2xl font-bold text-[#3B82F6]">
-            {metrics ? `${formatBytes(metrics.diskUsed)} / ${formatBytes(metrics.diskTotal)}` : 'TODO'}
-          </p>
+
+        {/* Disk Usage */}
+        <div className="bg-card border border-muted rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2">Disk Usage</h2>
+          <div className="text-2xl font-bold text-primary">
+            {metrics?.disk.toFixed(1)}%
+          </div>
         </div>
-        
-        <div className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[#9CA3AF] mb-2">Network RX</h3>
-          <p className="text-2xl font-bold text-[#3B82F6]">
-            {metrics ? formatBytes(metrics.networkRx) : 'TODO'}
-          </p>
+
+        {/* Network RX */}
+        <div className="bg-card border border-muted rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2">Network RX</h2>
+          <div className="text-2xl font-bold text-primary">
+            {metrics ? formatBytes(metrics.network.rx) : '0 GB'}
+          </div>
         </div>
-        
-        <div className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[#9CA3AF] mb-2">Network TX</h3>
-          <p className="text-2xl font-bold text-[#3B82F6]">
-            {metrics ? formatBytes(metrics.networkTx) : 'TODO'}
-          </p>
+
+        {/* Network TX */}
+        <div className="bg-card border border-muted rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2">Network TX</h2>
+          <div className="text-2xl font-bold text-primary">
+            {metrics ? formatBytes(metrics.network.tx) : '0 GB'}
+          </div>
         </div>
-        
-        <div className="bg-[#111827] border border-[#374151] rounded-lg p-4 shadow-sm">
-          <h3 className="text-sm font-medium text-[#9CA3AF] mb-2">Uptime</h3>
-          <p className="text-2xl font-bold text-[#3B82F6]">
-            {metrics ? formatUptime(metrics.uptime) : 'TODO'}
-          </p>
+
+        {/* Uptime */}
+        <div className="bg-card border border-muted rounded-lg p-4 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2">Uptime</h2>
+          <div className="text-2xl font-bold text-primary">
+            {metrics ? formatUptime(metrics.uptime) : '0d 0h 0m'}
+          </div>
         </div>
       </div>
+
+      {/* TODO: Sprint 2 - Add PM2 process management */}
+      {/* TODO: Sprint 2 - Add deployed projects section */}
+      {/* TODO: Sprint 2 - Add web terminal */}
     </div>
-  );
+  )
 }
